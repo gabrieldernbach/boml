@@ -1,0 +1,8 @@
+*.pyc
+*.pyo
+__pycache__/
+*.DS_Store
+
+# data folders
+comboFM_core_data/cross-validation_folds/*
+comboFM_core_data/data/*
