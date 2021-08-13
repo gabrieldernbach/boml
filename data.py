@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 def load():
     # data augmentation a, b <=> b, a
-    data_dir = Path("comboFM_data/data/data/")
+    data_dir = Path("comboFM_data/data/")
     forward = (
         "drug1_concentration__one-hot_encoding.csv",
         "drug2_concentration__one-hot_encoding.csv",
