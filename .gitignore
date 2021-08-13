@@ -8,3 +8,6 @@ comboFM_core_data/data/*
 .idea/
 .ipynb_checkpoints/
 *.pkl
+*.csv
+comboFM_data/additional_data/
+comboFM_data/experimental_validation_data/
