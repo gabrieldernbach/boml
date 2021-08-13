@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 def load():
     # data augmentation a, b <=> b, a
-    data_dir = Path("comboFM_core_data/data/data/")
+    data_dir = Path("comboFM_data/data/data/")
     forward = (
         "drug1_concentration__one-hot_encoding.csv",
         "drug2_concentration__one-hot_encoding.csv",
@@ -60,11 +60,11 @@ def split(df, mode, inner_fold, outer_fold):
         raise ValueError(f"inner_fold must be int in [1, 10])")
 
     rest_idx = pd.read_csv(
-        f'comboFM_core_data/cross-validation_folds'
+        f'comboFM_data/cross-validation_folds'
         f'/{mode}/train_idx_outer_fold-{outer_fold}.txt',
         header=None).values
     test_idx = pd.read_csv(
-        f'comboFM_core_data/cross-validation_folds'
+        f'comboFM_data/cross-validation_folds'
         f'/{mode}/test_idx_outer_fold-{outer_fold}.txt',
         header=None).values
 
@@ -72,12 +72,12 @@ def split(df, mode, inner_fold, outer_fold):
     # df_rest = df.iloc[rest_idx.flatten()]
 
     train_idx = pd.read_csv(
-        f'comboFM_core_data/cross-validation_folds'
+        f'comboFM_data/cross-validation_folds'
         f'/{mode}/train_idx_outer_fold-{outer_fold}'
         f'_inner_fold-{inner_fold}.txt',
         header=None).values
     dev_idx = pd.read_csv(
-        f'comboFM_core_data/cross-validation_folds'
+        f'comboFM_data/cross-validation_folds'
         f'/{mode}/test_idx_outer_fold-{outer_fold}'
         f'_inner_fold-{inner_fold}.txt',
         header=None).values
