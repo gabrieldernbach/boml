@@ -5,3 +5,6 @@ __pycache__/
 
 # data folders
 comboFM_core_data/data/*
+.idea/
+.ipynb_checkpoints/
+*.pkl
