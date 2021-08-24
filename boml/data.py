@@ -2,9 +2,11 @@ from pathlib import Path
 
 import pandas as pd
 from tqdm import tqdm
+import torch
+from torch.utils.data import DataLoader, TensorDataset, Dataset
 
 
-def load():
+def load(debug=False):
     # data augmentation a, b <=> b, a
     data_dir = Path("comboFM_data/data/")
     forward = (
@@ -39,6 +41,9 @@ def load():
         ]
         return pd.concat(dfs, axis=1)
 
+    if debug:
+        forward = forward[-2:]
+        backward = backward[-2:]
     dff = csvs_load(data_dir, forward)
     dfb = csvs_load(data_dir, backward)
     dfb.columns = list(dff.columns)
@@ -86,6 +91,7 @@ def split(df, mode, inner_fold, outer_fold):
 
     return df_train, df_dev, df_test
 
+
 class ScaleAbsOne:
     def __init__(self):
         self.axis = None
@@ -101,6 +107,28 @@ class ScaleAbsOne:
     def fit_transform(self, x, axis=0):
         self.fit(x, axis)
         return self.transform(x)
+
+
+def load_dataloaders(label="PercentageGrowth", debug=False, batch_size=10):
+    df = load(debug=debug)
+    train_set, dev_set, test_set = split(df, "new_dose-response_matrices", inner_fold=1, outer_fold=1)
+    train_target = train_set.pop(label)
+    dev_target = dev_set.pop(label)
+    test_target = test_set.pop(label)
+    scaler = ScaleAbsOne()
+    train_set = scaler.fit_transform(train_set.values)
+    dev_set = scaler.transform(dev_set.values)
+    test_set = scaler.transform(test_set.values)
+
+    dataloaders = {}
+    datasets = {'train': [train_set, train_target], 'dev': [dev_set, dev_target],
+                'test': [test_set, test_target]}
+    for typ in datasets:
+        t = datasets[typ]
+        dataset = TensorDataset(torch.tensor(t[0]), torch.tensor(t[1].values))
+        dataloaders[typ] = DataLoader(dataset, batch_size=batch_size)
+
+    return [dataloaders[typ] for typ in ['train', 'dev', 'test']]
 
 
 if __name__ == "__main__":

@@ -11,3 +11,7 @@ comboFM_core_data/data/*
 *.csv
 comboFM_data/additional_data/
 comboFM_data/experimental_validation_data/
+venv/
+__MACOSX/
+boml.egg-info/
+.eggs/
