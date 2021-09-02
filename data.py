@@ -43,6 +43,7 @@ def load():
     dfb = csvs_load(data_dir, backward)
     dfb.columns = list(dff.columns)
     df = pd.concat((dff, dfb), axis=0)
+    df = df.reset_index(drop=True)
     return df
 
 
@@ -93,7 +94,7 @@ class ScaleAbsOne:
 
     def fit(self, x, axis=0):
         self.axis = axis
-        self.max = x.max(axis=axis, keepdims=True)
+        self.max = abs(x).max(axis=axis, keepdims=True)
 
     def transform(self, x):
         return x / self.max
