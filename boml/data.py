@@ -36,14 +36,11 @@ def load(debug=False):
 
     def csvs_load(path, csvs):
         dfs = [
-            pd.read_csv(path / csv)
+            pd.read_csv(path / csv, nrows=5000 if debug else None)
             for csv in tqdm(csvs)
         ]
         return pd.concat(dfs, axis=1)
 
-    if debug:
-        forward = forward[-2:]
-        backward = backward[-2:]
     dff = csvs_load(data_dir, forward)
     dfb = csvs_load(data_dir, backward)
     dfb.columns = list(dff.columns)
@@ -51,7 +48,7 @@ def load(debug=False):
     return df
 
 
-def split(df, mode, inner_fold, outer_fold):
+def split(df, mode, inner_fold, outer_fold, debug=False):
     modes = (
         "new_dose-response_matrix_entries",
         "new_dose-response_matrices",
@@ -64,30 +61,33 @@ def split(df, mode, inner_fold, outer_fold):
     if not (type(inner_fold) == int) or not (1 <= inner_fold <= 5):
         raise ValueError(f"inner_fold must be int in [1, 10])")
 
-    rest_idx = pd.read_csv(
-        f'comboFM_data/cross-validation_folds'
-        f'/{mode}/train_idx_outer_fold-{outer_fold}.txt',
-        header=None).values
+    # rest_idx = pd.read_csv(
+    #    f'comboFM_data/cross-validation_folds'
+    #    f'/{mode}/train_idx_outer_fold-{outer_fold}.txt',
+    #    header=None).values
     test_idx = pd.read_csv(
         f'comboFM_data/cross-validation_folds'
         f'/{mode}/test_idx_outer_fold-{outer_fold}.txt',
-        header=None).values
-
-    df_test = df.iloc[test_idx.flatten()]
-    # df_rest = df.iloc[rest_idx.flatten()]
+        header=None).values.flatten()
 
     train_idx = pd.read_csv(
         f'comboFM_data/cross-validation_folds'
         f'/{mode}/train_idx_outer_fold-{outer_fold}'
         f'_inner_fold-{inner_fold}.txt',
-        header=None).values
+        header=None).values.flatten()
     dev_idx = pd.read_csv(
         f'comboFM_data/cross-validation_folds'
         f'/{mode}/test_idx_outer_fold-{outer_fold}'
         f'_inner_fold-{inner_fold}.txt',
-        header=None).values
-    df_train = df.iloc[train_idx.flatten()]
-    df_dev = df.iloc[dev_idx.flatten()]
+        header=None).values.flatten()
+    if debug:
+        test_idx = test_idx[test_idx < df.shape[0]]
+        train_idx = train_idx[train_idx < df.shape[0]]
+        dev_idx = dev_idx[dev_idx < df.shape[0]]
+    df_test = df.iloc[test_idx]
+    # df_rest = df.iloc[rest_idx.flatten()]
+    df_train = df.iloc[train_idx]
+    df_dev = df.iloc[dev_idx]
 
     return df_train, df_dev, df_test
 
@@ -99,7 +99,7 @@ class ScaleAbsOne:
 
     def fit(self, x, axis=0):
         self.axis = axis
-        self.max = x.max(axis=axis, keepdims=True)
+        self.max = abs(x).max(axis=axis, keepdims=True)
 
     def transform(self, x):
         return x / self.max
@@ -111,7 +111,7 @@ class ScaleAbsOne:
 
 def load_dataloaders(label="PercentageGrowth", debug=False, batch_size=10):
     df = load(debug=debug)
-    train_set, dev_set, test_set = split(df, "new_dose-response_matrices", inner_fold=1, outer_fold=1)
+    train_set, dev_set, test_set = split(df, "new_dose-response_matrices", inner_fold=1, outer_fold=1, debug=debug)
     train_target = train_set.pop(label)
     dev_target = dev_set.pop(label)
     test_target = test_set.pop(label)
@@ -125,8 +125,11 @@ def load_dataloaders(label="PercentageGrowth", debug=False, batch_size=10):
                 'test': [test_set, test_target]}
     for typ in datasets:
         t = datasets[typ]
-        dataset = TensorDataset(torch.tensor(t[0]), torch.tensor(t[1].values))
-        dataloaders[typ] = DataLoader(dataset, batch_size=batch_size)
+        if debug:
+            import numpy as np
+            t = [np.nan_to_num(t[0]), t[1].fillna(0)]
+        dataset = TensorDataset(torch.tensor(t[0]).float(), torch.tensor(t[1].values).float())
+        dataloaders[typ] = DataLoader(dataset, batch_size=batch_size, num_workers=6)
 
     return [dataloaders[typ] for typ in ['train', 'dev', 'test']]
 
