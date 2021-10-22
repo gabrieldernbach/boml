@@ -19,8 +19,9 @@ class GPModel(ApproximateGP):
             self, inducing_points, variational_distribution, learn_inducing_locations=True)
         super(GPModel, self).__init__(variational_strategy)
         self.mean_module = gpytorch.means.ConstantMean()
-        # TODO right now we hard-coded RBFKernel as the kernel
+
         kernel = kernel or gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        print(f'Using Kernel {kernel}')
         self.covar_module = kernel
 
     def forward(self, x):
@@ -69,8 +70,10 @@ def main(debug=False, num_epochs=5, batch_size=128, kernel='rbf'):
 
     # TODO AD-hoc, taking the first batch as inducing points
     inducing_points, by = next(iter(train_set))
+    # This is kinda inefficient, because I initialize them all
     kernel_choices = {'rbf': gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel()),
-                      'anova': AnovaKernel(s=5, m=bx.shape[1])
+                      'anova': AnovaKernel(m=5, s=bx.shape[1]),
+                      'multilinear': MultilinearKernel(dim=bx.shape[1])
                       }
     gp = GPModel(inducing_points=inducing_points, kernel=kernel_choices[kernel.lower()])
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
