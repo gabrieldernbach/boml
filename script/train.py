@@ -31,10 +31,13 @@ class GPModel(ApproximateGP):
 
 
 class GPModel_lightning(LightningModule):
-    def __init__(self, model, mll):
+    def __init__(self, model, mll, kernel_name):
         super().__init__()
         self.model = model
         self.mll = mll
+        # I don't understnad pytorch-lightning
+        self.kernel_name = kernel_name
+        self.hparams['kernel-type'] = kernel_name
 
     def forward(self, x):
         return self.model(x)
@@ -62,7 +65,7 @@ class GPModel_lightning(LightningModule):
 @click.option('--debug', default=False)
 @click.option('--batch-size', default=512)
 @click.option('--num-epochs', default=2)
-@click.option('--kernel', type=click.Choice(['RBF', 'ANOVA', 'MultiLinear'], case_sensitive=False), default='RBF')
+@click.option('--kernel', type=click.Choice(['RBF', 'ANOVA', 'MultiLinear', 'linear'], case_sensitive=False), default='RBF')
 def main(debug=False, num_epochs=5, batch_size=128, kernel='rbf'):
     train_set, dev_set, test_set = data.load_dataloaders(batch_size=batch_size, debug=debug)
 
@@ -72,6 +75,7 @@ def main(debug=False, num_epochs=5, batch_size=128, kernel='rbf'):
     inducing_points, by = next(iter(train_set))
     # This is kinda inefficient, because I initialize them all
     kernel_choices = {'rbf': gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel()),
+                      'linear': gpytorch.kernels.LinearKernel(),
                       'anova': AnovaKernel(m=5, s=bx.shape[1]),
                       'multilinear': MultilinearKernel(dim=bx.shape[1])
                       }
@@ -81,7 +85,7 @@ def main(debug=False, num_epochs=5, batch_size=128, kernel='rbf'):
     # Our loss object. We're using the VariationalELBO
     mll = gpytorch.mlls.VariationalELBO(likelihood, gp, num_data=by.size(0))
 
-    model = GPModel_lightning(gp, mll)
+    model = GPModel_lightning(gp, mll, kernel)
     # Initialize a trainer
     trainer = Trainer(
         gpus=1,
