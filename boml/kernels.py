@@ -109,7 +109,7 @@ class MultilinearKernel(Kernel):
     def __init__(self, dim, *args, **kwargs):
         super(MultilinearKernel, self).__init__(*args, **kwargs)
         self.dim = dim  # Degree of Multilinear Kernel
-        self.gammas = torch.nn.parameter.Parameter(torch.ones((dim)), requires_grad=False)
+        self.gammas = torch.nn.parameter.Parameter(torch.ones((dim)), requires_grad=True)
 
     def forward(self, x1, x2, diag=False, **params):
         g_sq = self.gammas ** 2

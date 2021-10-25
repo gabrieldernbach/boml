@@ -1,14 +1,11 @@
 import torch
-from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.metrics.functional import accuracy
+from pytorch_lightning import LightningModule, Trainer, loggers
 import gpytorch
 from boml.kernels import AnovaKernel, MultilinearKernel
 from gpytorch.models import ApproximateGP
 from gpytorch.variational import CholeskyVariationalDistribution, VariationalStrategy
 from boml import train, data
-import click
-from tqdm import tqdm
-from torch.utils.data import TensorDataset, DataLoader
+from argparse import ArgumentParser
 
 
 # TODO move to a different module
@@ -21,7 +18,6 @@ class GPModel(ApproximateGP):
         self.mean_module = gpytorch.means.ConstantMean()
 
         kernel = kernel or gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-        print(f'Using Kernel {kernel}')
         self.covar_module = kernel
 
     def forward(self, x):
@@ -31,13 +27,11 @@ class GPModel(ApproximateGP):
 
 
 class GPModel_lightning(LightningModule):
-    def __init__(self, model, mll, kernel_name):
+
+    def __init__(self, model, mll):
         super().__init__()
         self.model = model
         self.mll = mll
-        # I don't understnad pytorch-lightning
-        self.kernel_name = kernel_name
-        self.hparams['kernel-type'] = kernel_name
 
     def forward(self, x):
         return self.model(x)
@@ -61,13 +55,9 @@ class GPModel_lightning(LightningModule):
         ], lr=0.01)
 
 
-@click.command()
-@click.option('--debug', default=False)
-@click.option('--batch-size', default=512)
-@click.option('--num-epochs', default=2)
-@click.option('--kernel', type=click.Choice(['RBF', 'ANOVA', 'MultiLinear', 'linear'], case_sensitive=False), default='RBF')
-def main(debug=False, num_epochs=5, batch_size=128, kernel='rbf'):
-    train_set, dev_set, test_set = data.load_dataloaders(batch_size=batch_size, debug=debug)
+def main(parser):
+    args = parser.parse_args()
+    train_set, dev_set, test_set = data.load_dataloaders(batch_size=args.batch_size, debug=args.debug)
 
     bx, by = next(iter(train_set))
 
@@ -79,28 +69,32 @@ def main(debug=False, num_epochs=5, batch_size=128, kernel='rbf'):
                       'anova': AnovaKernel(m=5, s=bx.shape[1]),
                       'multilinear': MultilinearKernel(dim=bx.shape[1])
                       }
-    gp = GPModel(inducing_points=inducing_points, kernel=kernel_choices[kernel.lower()])
+    gp = GPModel(inducing_points=inducing_points, kernel=kernel_choices[args.kernel.lower()])
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
     # Our loss object. We're using the VariationalELBO
     mll = gpytorch.mlls.VariationalELBO(likelihood, gp, num_data=by.size(0))
 
-    model = GPModel_lightning(gp, mll, kernel)
+    model = GPModel_lightning(gp, mll)
     # Initialize a trainer
     trainer = Trainer(
         gpus=1,
-        max_epochs=num_epochs,
+        max_epochs=args.num_epochs,
         progress_bar_refresh_rate=20,
+        logger=loggers.TensorBoardLogger(save_dir='lightning_logs',
+                                         name=f'{args.kernel}-bs:{args.batch_size}-epochs:{args.num_epochs}')
+
     )
 
     trainer.fit(model, train_dataloaders=train_set, val_dataloaders=dev_set)
 
 
 if __name__ == "__main__":
-
-    # TODO implement SGPR
-    # TODO predict
-    # TODO optimize
-    # TODO training loop
+    parser = ArgumentParser()
+    parser.add_argument('--debug', default=False)
+    parser.add_argument('--batch-size', type=int, default=512)
+    parser.add_argument('--num-epochs', type=int, default=2)
+    parser.add_argument("--n-ind-points", type=int, default=12, help='TODO use me')
+    parser.add_argument("--kernel", type=str, default="rbf", choices=['rbf', 'anova', 'multilinear', 'linear'])
     # TODO the rest
-    main()
+    main(parser)
