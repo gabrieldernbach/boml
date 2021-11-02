@@ -12,7 +12,8 @@ setup(
         'numpy',
         'tqdm',
         'matplotlib',
-        'click'
+        'click',
+        'pytorch-lightning',
     ],
     setup_requires=[
         'setuptools_scm',

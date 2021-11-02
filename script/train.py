@@ -44,8 +44,11 @@ class GPModel_lightning(LightningModule):
 
     def validation_step(self, batch, batch_nb):
         x, y = batch
-        loss = -self.mll(self(x), y)
+        pred = self(x)
+        loss = -self.mll(pred, y)
+        mse = torch.nn.MSELoss()
         self.log("test-loss", loss)
+        self.log("test-MSE", mse(pred.loc, y))
         return loss
 
     def configure_optimizers(self):
@@ -92,8 +95,8 @@ def main(parser):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('--debug', default=False)
-    parser.add_argument('--batch-size', type=int, default=512)
-    parser.add_argument('--num-epochs', type=int, default=2)
+    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--num-epochs', type=int, default=50)
     parser.add_argument("--n-ind-points", type=int, default=12, help='TODO use me')
     parser.add_argument("--kernel", type=str, default="rbf", choices=['rbf', 'anova', 'multilinear', 'linear'])
     # TODO the rest
