@@ -16,3 +16,5 @@ __MACOSX/
 boml.egg-info/
 .eggs/
 lightning_logs/*
+log/*
+qsub_scripts/*

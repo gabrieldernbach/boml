@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader, TensorDataset, Dataset
@@ -116,6 +117,10 @@ def load_dataloaders(label="PercentageGrowth", debug=False, batch_size=10):
     dev_target = dev_set.pop(label)
     test_target = test_set.pop(label)
     scaler = ScaleAbsOne()
+    std_scaler = StandardScaler()
+    train_target = std_scaler.fit_transform(train_target)
+    dev_target = std_scaler.transform(dev_target)
+    test_target = std_scaler.transform(test_target)
     train_set = scaler.fit_transform(train_set.values)
     dev_set = scaler.transform(dev_set.values)
     test_set = scaler.transform(test_set.values)
