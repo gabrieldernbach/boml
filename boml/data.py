@@ -118,9 +118,9 @@ def load_dataloaders(label="PercentageGrowth", debug=False, batch_size=10):
     test_target = test_set.pop(label)
     scaler = ScaleAbsOne()
     std_scaler = StandardScaler()
-    train_target = std_scaler.fit_transform(train_target)
-    dev_target = std_scaler.transform(dev_target)
-    test_target = std_scaler.transform(test_target)
+    train_target = std_scaler.fit_transform(train_target.values[:, None])[:, 0]
+    dev_target = std_scaler.transform(dev_target.values[:, None])[:, 0]
+    test_target = std_scaler.transform(test_target.values[:, None])[:, 0]
     train_set = scaler.fit_transform(train_set.values)
     dev_set = scaler.transform(dev_set.values)
     test_set = scaler.transform(test_set.values)
@@ -132,8 +132,8 @@ def load_dataloaders(label="PercentageGrowth", debug=False, batch_size=10):
         t = datasets[typ]
         if debug:
             import numpy as np
-            t = [np.nan_to_num(t[0]), t[1].fillna(0)]
-        dataset = TensorDataset(torch.tensor(t[0]).float(), torch.tensor(t[1].values).float())
+            t = [np.nan_to_num(t[0]), np.nan_to_num(t[1])]
+        dataset = TensorDataset(torch.tensor(t[0]).float(), torch.tensor(t[1]).float())
         dataloaders[typ] = DataLoader(dataset, batch_size=batch_size, num_workers=6)
 
     return [dataloaders[typ] for typ in ['train', 'dev', 'test']]
